@@ -34,9 +34,19 @@ export async function createNoiseFilter(
       maxChannels: 1,
       wasmBinary,
     });
+    // RNNoise is mono; MediaStreamDestination defaults to stereo, so copy L→R.
+    source.channelCount = 1;
+    source.channelCountMode = "explicit";
+    rnnoise.channelCount = 1;
+    rnnoise.channelCountMode = "explicit";
+    const merger = context.createChannelMerger(2);
     const destination = context.createMediaStreamDestination();
+    destination.channelCount = 2;
+    destination.channelCountMode = "explicit";
     source.connect(rnnoise);
-    rnnoise.connect(destination);
+    rnnoise.connect(merger, 0, 0);
+    rnnoise.connect(merger, 0, 1);
+    merger.connect(destination);
 
     const track = destination.stream.getAudioTracks()[0];
     if (!track) {
@@ -52,6 +62,7 @@ export async function createNoiseFilter(
         try {
           source.disconnect();
           rnnoise.disconnect();
+          merger.disconnect();
           rnnoise.destroy();
         } catch {
           // already torn down
