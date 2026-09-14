@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCorsOrigins } from "./origins.js";
+import { normalizeOrigin, parseCorsOrigins, resolveCorsOrigin } from "./origins.js";
 
 describe("cors origins", () => {
   it("falls back to local Next and dedupes extra entries", () => {
@@ -9,6 +9,20 @@ describe("cors origins", () => {
     ]);
     expect(parseCorsOrigins(" https://soneo.app, https://soneo.app ")).toEqual([
       "https://soneo.app",
+      "https://www.soneo.app",
     ]);
+  });
+
+  it("strips Coolify UI ports, slashes and quotes from pasted origins", () => {
+    expect(normalizeOrigin("https://soneo.app:3000/")).toBe("https://soneo.app");
+    expect(normalizeOrigin('"https://api.soneo.app:4000"')).toBe(
+      "https://api.soneo.app",
+    );
+    expect(
+      resolveCorsOrigin(
+        "https://soneo.app",
+        parseCorsOrigins("https://soneo.app:3000"),
+      ),
+    ).toBe("https://soneo.app");
   });
 });

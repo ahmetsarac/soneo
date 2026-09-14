@@ -17,12 +17,14 @@ import {
   RoomError,
   serializeRoom,
 } from "./rooms.js";
-import { parseCorsOrigins } from "./origins.js";
+import { parseCorsOrigins, resolveCorsOrigin } from "./origins.js";
 
 const app = new Hono();
 
 const corsMiddleware = cors({
-  origin: parseCorsOrigins(process.env.CORS_ORIGIN),
+  origin: (origin) =>
+    resolveCorsOrigin(origin, parseCorsOrigins(process.env.CORS_ORIGIN)) ??
+    undefined,
   allowMethods: ["GET", "POST", "OPTIONS"],
   allowHeaders: ["Content-Type"],
 });
