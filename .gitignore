@@ -1,0 +1,12 @@
+node_modules
+.DS_Store
+.env
+.env.*
+!.env.example
+dist
+.next
+out
+*.log
+.turbo
+.vercel
+apps/web/public/noise
