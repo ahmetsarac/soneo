@@ -42,20 +42,15 @@ export function ChatPanel({
     <aside className="flex h-full min-h-80 w-full flex-col border-t border-line lg:min-h-0 lg:w-80 lg:border-t-0 lg:border-l">
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 className="font-display text-lg">Sohbet</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] tracking-wide text-mist uppercase">
-            {connected ? "canlı" : "yeniden bağlanıyor"}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Sohbeti gizle"
-            title="Sohbeti gizle"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-line hover:border-acid"
-          >
-            <CollapseIcon />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Sohbeti gizle"
+          title="Sohbeti gizle"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-line hover:border-acid"
+        >
+          <CollapseIcon />
+        </button>
       </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">

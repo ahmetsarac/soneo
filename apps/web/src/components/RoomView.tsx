@@ -131,7 +131,7 @@ function RoomSession({
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
-          <p className="font-display text-lg tracking-tight">soneo</p>
+          <p className="font-display text-lg tracking-tight text-acid">Soneo</p>
           <button
             type="button"
             onClick={onCopy}

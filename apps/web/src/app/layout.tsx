@@ -13,7 +13,7 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "soneo",
+  title: "Soneo",
   description: "Oda aç, nickini yaz, konuş.",
 };
 
