@@ -134,13 +134,7 @@ function RoomSession({
           <span className="hidden text-mist sm:inline">
             {room.participants.length} kişi
           </span>
-          <button
-            type="button"
-            onClick={onLeave}
-            className="rounded-full border border-ember bg-ember px-3 py-1.5 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:brightness-110"
-          >
-            Ayrıl
-          </button>
+          <LeaveButton onLeave={onLeave} />
         </div>
       </header>
 
@@ -246,6 +240,66 @@ function RoomSession({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+function LeaveButton({ onLeave }: { onLeave: () => void }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((current) => !current)}
+        className="rounded-full border border-ember bg-ember px-3 py-1.5 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:brightness-110"
+      >
+        Ayrıl
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Odadan ayrılmayı onayla"
+          className="absolute top-[calc(100%+10px)] right-0 z-50 w-44 rounded-2xl border border-line bg-panel px-3 py-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.45)] before:absolute before:-top-1.5 before:right-5 before:h-3 before:w-3 before:rotate-45 before:border-t before:border-l before:border-line before:bg-panel"
+        >
+          <p className="relative text-sm">Odadan ayrıl?</p>
+          <div className="relative mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex-1 rounded-full border border-line px-3 py-1.5 text-sm hover:border-acid"
+            >
+              Hayır
+            </button>
+            <button
+              type="button"
+              onClick={onLeave}
+              className="flex-1 rounded-full border border-ember bg-ember px-3 py-1.5 text-sm text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:brightness-110"
+            >
+              Evet
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
