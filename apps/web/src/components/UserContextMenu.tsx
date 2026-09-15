@@ -90,7 +90,7 @@ export function UserContextMenu({
         type="button"
         role="menuitem"
         onClick={() => onVolumeChange(muted ? lastAudibleRef.current : 0)}
-        className="w-full rounded-xl px-2.5 py-2 text-left text-sm hover:bg-white/6"
+        className="w-full rounded-xl px-2.5 py-2 text-left text-sm hover:bg-white/6 focus-visible:bg-white/6"
       >
         {muted ? "Sesi aç" : "Sessize al"}
       </button>

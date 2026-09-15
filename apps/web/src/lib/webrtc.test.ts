@@ -15,6 +15,9 @@ import {
   shouldResetForOffer,
   shouldResetPeer,
   serializeDescription,
+  nextSpeakingState,
+  gatedVoiceLevel,
+  SPEAK_HOLD_MS,
 } from "./webrtc";
 
 describe("webrtc helpers", () => {
@@ -49,11 +52,30 @@ describe("webrtc helpers", () => {
 
   it("lights more bars as the level rises", () => {
     expect(litBarsFromLevel(0)).toBe(0);
-    expect(litBarsFromLevel(0.04)).toBe(0);
-    expect(litBarsFromLevel(0.1)).toBe(1);
+    expect(litBarsFromLevel(0.1)).toBe(0);
+    expect(litBarsFromLevel(0.2)).toBe(1);
     expect(litBarsFromLevel(0.4)).toBe(2);
     expect(litBarsFromLevel(0.61)).toBe(4);
     expect(litBarsFromLevel(1)).toBe(5);
+  });
+
+  it("opens the speaking ring above room hiss and holds through short gaps", () => {
+    expect(nextSpeakingState(0.08, false, 0, 0)).toEqual({
+      speaking: false,
+      holdUntil: 0,
+    });
+    expect(nextSpeakingState(0.25, false, 0, 1000)).toEqual({
+      speaking: true,
+      holdUntil: 1000 + SPEAK_HOLD_MS,
+    });
+    expect(nextSpeakingState(0.16, true, 0, 1000).speaking).toBe(true);
+    expect(nextSpeakingState(0.05, true, 1300, 1200).speaking).toBe(true);
+    expect(nextSpeakingState(0.05, true, 1100, 1200).speaking).toBe(false);
+  });
+
+  it("hides the meter while the speaking gate is closed", () => {
+    expect(gatedVoiceLevel(0.4, false)).toBe(0);
+    expect(gatedVoiceLevel(0.05, true)).toBeGreaterThan(0);
   });
 
   it("treats a second inbound video track as screen share", () => {

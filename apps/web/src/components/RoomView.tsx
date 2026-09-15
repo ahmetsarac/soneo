@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { ChatPanel } from "@/components/ChatPanel";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChatExpandTab, ChatPanel } from "@/components/ChatPanel";
 import { MediaBar } from "@/components/MediaBar";
 import { ParticipantGrid } from "@/components/ParticipantGrid";
 import { useRoomChannel } from "@/hooks/useRoomChannel";
@@ -19,6 +19,7 @@ import {
 import { clearSession, readSession, writeSession } from "@/lib/session";
 import { clampVolume, readPeerVolumes, writePeerVolumes } from "@/lib/volume";
 import { isPeerConnected } from "@/lib/webrtc";
+import { readChatOpen, writeChatOpen } from "@/lib/chatOpen";
 
 function GoneScreen({ kind }: { kind: "closed" | "missing" }) {
   return (
@@ -33,7 +34,7 @@ function GoneScreen({ kind }: { kind: "closed" | "missing" }) {
       </p>
       <Link
         href="/"
-        className="rounded-full bg-acid px-5 py-2 text-sm font-semibold text-ink"
+        className="rounded-full bg-acid px-5 py-2 text-sm font-semibold text-ink hover:bg-acid-glow"
       >
         Anasayfaya dön
       </Link>
@@ -66,6 +67,9 @@ function RoomSession({
   });
   const [volumes, setVolumes] = useState<Record<string, number>>({});
   const [showLinking, setShowLinking] = useState(true);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [chatUnread, setChatUnread] = useState(0);
+  const messageCountRef = useRef(0);
   const remotes = room.participants.filter((person) => person.id !== participantId);
   const waitingOnPeers =
     remotes.length > 0 &&
@@ -73,7 +77,20 @@ function RoomSession({
 
   useEffect(() => {
     setVolumes(readPeerVolumes());
+    setChatOpen(readChatOpen());
   }, []);
+
+  useEffect(() => {
+    const count = channel.messages.length;
+    if (chatOpen) {
+      messageCountRef.current = count;
+      setChatUnread(0);
+      return;
+    }
+    const added = count - messageCountRef.current;
+    messageCountRef.current = count;
+    if (added > 0) setChatUnread((current) => current + added);
+  }, [channel.messages, chatOpen]);
 
   useEffect(() => {
     if (!waitingOnPeers) {
@@ -93,13 +110,18 @@ function RoomSession({
     });
   }
 
+  function toggleChat() {
+    const next = !chatOpen;
+    setChatOpen(next);
+    writeChatOpen(next);
+    if (next) setChatUnread(0);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
-          <Link href="/" className="font-display text-lg tracking-tight">
-            soneo
-          </Link>
+          <p className="font-display text-lg tracking-tight">soneo</p>
           <button
             type="button"
             onClick={onCopy}
@@ -115,21 +137,27 @@ function RoomSession({
           <button
             type="button"
             onClick={onLeave}
-            className="rounded-full border border-line px-3 py-1.5 hover:border-ember hover:text-ember"
+            className="rounded-full border border-ember bg-ember px-3 py-1.5 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] hover:brightness-110"
           >
             Ayrıl
           </button>
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="relative min-h-0 flex-1">
+        <div
+          className={`grid h-full min-h-0 ${
+            chatOpen ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""
+          }`}
+        >
         <section className="flex min-h-[55vh] flex-col gap-4 p-4 md:p-6 lg:min-h-0">
           <div className="flex shrink-0 items-end justify-between">
             <h2 className="font-display text-xl">Ses</h2>
-            <p className="text-xs text-mist">
-              {media.mediaError ??
-                (waitingOnPeers ? "Bağlantı kuruluyor…" : "Aynı odada, tarayıcıdan tarayıcıya")}
-            </p>
+            {(media.mediaError || waitingOnPeers) && (
+              <p className="text-xs text-mist">
+                {media.mediaError ?? "Bağlantı kuruluyor…"}
+              </p>
+            )}
           </div>
           <div className="relative flex min-h-0 flex-1 flex-col">
             <ParticipantGrid
@@ -187,16 +215,36 @@ function RoomSession({
               onToggleCam={() => void media.toggleCam()}
               onToggleScreen={() => void media.toggleScreenShare()}
               onToggleNoise={() => void media.toggleNoise()}
+              chatOpen={chatOpen}
+              chatUnread={chatUnread}
+              onToggleChat={toggleChat}
             />
           </div>
         </section>
 
-        <ChatPanel
-          messages={channel.messages}
-          selfId={participantId}
-          connected={channel.connected}
-          onSend={channel.sendChat}
-        />
+        {chatOpen && (
+          <ChatPanel
+            messages={channel.messages}
+            selfId={participantId}
+            connected={channel.connected}
+            onSend={channel.sendChat}
+            onClose={() => {
+              setChatOpen(false);
+              writeChatOpen(false);
+            }}
+          />
+        )}
+        </div>
+        {!chatOpen && (
+          <ChatExpandTab
+            unread={chatUnread}
+            onOpen={() => {
+              setChatOpen(true);
+              writeChatOpen(true);
+              setChatUnread(0);
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -361,7 +409,7 @@ export function RoomView({ code }: { code: string }) {
           <button
             type="submit"
             disabled={pending || !nickname.trim()}
-            className="h-12 rounded-2xl bg-acid text-sm font-semibold text-ink disabled:opacity-40"
+            className="h-12 rounded-2xl bg-acid text-sm font-semibold text-ink hover:bg-acid-glow disabled:opacity-40"
           >
             {pending ? "Katılıyor…" : "Odaya gir"}
           </button>

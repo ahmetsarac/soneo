@@ -1,9 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import type { Participant } from "@/lib/api";
 import { UserContextMenu } from "@/components/UserContextMenu";
 import { VoiceMeter } from "@/components/VoiceMeter";
+import {
+  exitFullscreen,
+  isOurFullscreen,
+  shouldReleaseFullscreen,
+  subscribeFullscreenChange,
+  toggleFullscreen,
+} from "@/lib/fullscreen";
 import { isPeerConnecting, litBarsFromLevel } from "@/lib/webrtc";
 
 function hueFromName(name: string) {
@@ -37,11 +44,13 @@ export function ParticipantTile({
   presenting?: boolean;
   compact?: boolean;
 }) {
+  const tileRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const pressTimer = useRef(0);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const hue = hueFromName(participant.nickname);
   const speaking = micOn && litBarsFromLevel(level) > 0;
   const liveVideo = Boolean(
@@ -102,6 +111,20 @@ export function ParticipantTile({
     audio.muted = volume === 0;
   }, [volume, trackKey]);
 
+  useEffect(() => {
+    const sync = () => {
+      setFullscreen(isOurFullscreen(tileRef.current, videoRef.current));
+    };
+    sync();
+    return subscribeFullscreenChange(sync, videoRef.current);
+  }, [presenting, showVideo, trackKey]);
+
+  useEffect(() => {
+    if (!shouldReleaseFullscreen(presenting, showVideo)) return;
+    if (!isOurFullscreen(tileRef.current, videoRef.current)) return;
+    void exitFullscreen(videoRef.current);
+  }, [presenting, showVideo]);
+
   function openMenu(x: number, y: number) {
     if (self) return;
     setMenu({ x, y });
@@ -113,11 +136,20 @@ export function ParticipantTile({
     pressOrigin.current = null;
   }
 
+  function onToggleFullscreen(event: SyntheticEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    const tile = tileRef.current;
+    if (!tile) return;
+    void toggleFullscreen(tile, videoRef.current);
+  }
+
   return (
     <article
+      ref={tileRef}
       className={`relative flex h-full min-h-0 cursor-default flex-col justify-end overflow-hidden rounded-3xl border bg-panel select-none transition ${
         compact ? "p-2" : "p-4"
-      } ${
+      } ${presenting ? "group screen-share-tile" : ""} ${
         speaking ? "border-acid shadow-[0_0_0_1px_rgba(214,255,63,0.35)]" : "border-line"
       }`}
       onContextMenu={(event) => {
@@ -143,6 +175,12 @@ export function ParticipantTile({
         const dy = event.clientY - origin.y;
         if (dx * dx + dy * dy > 144) clearPress();
       }}
+      onDoubleClick={() => {
+        if (!presenting || !showVideo) return;
+        const tile = tileRef.current;
+        if (!tile) return;
+        void toggleFullscreen(tile, videoRef.current);
+      }}
     >
       <video
         ref={videoRef}
@@ -156,6 +194,24 @@ export function ParticipantTile({
         }`}
       />
       {!self && <audio ref={audioRef} autoPlay />}
+      {presenting && showVideo && (
+        <button
+          type="button"
+          className={`absolute top-3 right-3 z-[2] flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-paper transition hover:bg-black/75 hover:text-acid ${
+            fullscreen
+              ? "opacity-100"
+              : "opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+          }`}
+          title={fullscreen ? "Tam ekrandan çık" : "Tam ekran izle"}
+          aria-label={fullscreen ? "Tam ekrandan çık" : "Tam ekran izle"}
+          aria-pressed={fullscreen}
+          onClick={onToggleFullscreen}
+          onDoubleClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <FullscreenIcon exit={fullscreen} />
+        </button>
+      )}
       {connecting && (
         <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-panel/80">
           <span className="h-7 w-7 animate-spin rounded-full border-2 border-line border-t-acid" />
@@ -224,5 +280,33 @@ export function ParticipantTile({
         />
       )}
     </article>
+  );
+}
+
+function FullscreenIcon({ exit }: { exit: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      {exit ? (
+        <>
+          <path
+            d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
   );
 }

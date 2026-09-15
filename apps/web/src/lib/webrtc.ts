@@ -117,7 +117,10 @@ export function serializeCandidate(
 }
 
 const LEVEL_GAIN = 10;
-const NOISE_FLOOR = 0.05;
+const NOISE_FLOOR = 0.16;
+export const SPEAK_OPEN = 0.22;
+export const SPEAK_CLOSE = 0.14;
+export const SPEAK_HOLD_MS = 220;
 
 export function levelFromTimeDomain(bytes: ArrayLike<number>) {
   if (bytes.length === 0) return 0;
@@ -133,4 +136,30 @@ export function litBarsFromLevel(level: number, barCount = 5) {
   const clamped = Math.min(1, Math.max(0, level));
   if (clamped < NOISE_FLOOR) return 0;
   return Math.min(barCount, Math.ceil(clamped * barCount));
+}
+
+export function nextSpeakingState(
+  level: number,
+  speaking: boolean,
+  holdUntil: number,
+  now: number,
+) {
+  if (level >= SPEAK_OPEN) {
+    return { speaking: true, holdUntil: now + SPEAK_HOLD_MS };
+  }
+  if (!speaking) {
+    return { speaking: false, holdUntil };
+  }
+  if (level >= SPEAK_CLOSE) {
+    return { speaking: true, holdUntil: now + SPEAK_HOLD_MS };
+  }
+  if (now < holdUntil) {
+    return { speaking: true, holdUntil };
+  }
+  return { speaking: false, holdUntil };
+}
+
+export function gatedVoiceLevel(level: number, speaking: boolean) {
+  if (!speaking) return 0;
+  return Math.max(level, NOISE_FLOOR);
 }

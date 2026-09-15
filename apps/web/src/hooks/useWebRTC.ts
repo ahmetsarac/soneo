@@ -13,8 +13,10 @@ import {
   offerCollisionAction,
   shouldResetForOffer,
   shouldResetPeer,
+  gatedVoiceLevel,
   levelFromTimeDomain,
   litBarsFromLevel,
+  nextSpeakingState,
   serializeCandidate,
   serializeDescription,
   type SignalPayload,
@@ -127,18 +129,24 @@ function startMeter(stream: MediaStream, onLevel: (level: number) => void): Mete
   const source = context.createMediaStreamSource(new MediaStream(clones));
   const analyser = context.createAnalyser();
   analyser.fftSize = 512;
-  analyser.smoothingTimeConstant = 0.35;
+  analyser.smoothingTimeConstant = 0.5;
   source.connect(analyser);
   const bytes = new Uint8Array(analyser.fftSize);
   let raf = 0;
   let last = 0;
   let stopped = false;
+  let speaking = false;
+  let holdUntil = 0;
 
   const tick = () => {
     if (stopped) return;
     analyser.getByteTimeDomainData(bytes);
-    const level = levelFromTimeDomain(bytes);
+    const raw = levelFromTimeDomain(bytes);
     const now = performance.now();
+    const next = nextSpeakingState(raw, speaking, holdUntil, now);
+    speaking = next.speaking;
+    holdUntil = next.holdUntil;
+    const level = gatedVoiceLevel(raw, speaking);
     if (now - last > 40) {
       last = now;
       onLevel(level);
