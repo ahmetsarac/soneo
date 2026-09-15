@@ -11,7 +11,7 @@ describe("meet grid", () => {
     expect(meetGridColumns(10)).toBe(4);
   });
 
-  it("picks a single wide tile for one person", () => {
+  it("picks a single wide 16:9 tile for one person", () => {
     const layout = meetGridLayout(1, 1280, 720);
     expect(layout.columns).toBe(1);
     expect(layout.rows).toBe(1);
@@ -23,6 +23,14 @@ describe("meet grid", () => {
     const layout = meetGridLayout(2, 1280, 720);
     expect(layout.columns).toBe(2);
     expect(layout.rows).toBe(1);
+    expect(layout.tileWidth / layout.tileHeight).toBeCloseTo(16 / 9, 5);
+  });
+
+  it("keeps two 16:9 tiles side by side after the chat column opens", () => {
+    const layout = meetGridLayout(2, 900, 640);
+    expect(layout.columns).toBe(2);
+    expect(layout.rows).toBe(1);
+    expect(layout.tileWidth / layout.tileHeight).toBeCloseTo(16 / 9, 5);
   });
 
   it("uses a 2x2 grid for four people", () => {
@@ -35,6 +43,13 @@ describe("meet grid", () => {
     const layout = meetGridLayout(5, 1280, 720);
     expect(layout.columns).toBe(3);
     expect(layout.rows).toBe(2);
+  });
+
+  it("stacks two people only when the room is too narrow for a pair", () => {
+    const layout = meetGridLayout(2, 320, 700);
+    expect(layout.columns).toBe(1);
+    expect(layout.rows).toBe(2);
+    expect(layout.tileWidth / layout.tileHeight).toBeCloseTo(16 / 9, 5);
   });
 
   it("stacks people in a tall narrow room", () => {

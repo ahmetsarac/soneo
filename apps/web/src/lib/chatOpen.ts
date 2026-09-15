@@ -1,4 +1,5 @@
 const STORAGE_KEY = "soneo.chatOpen";
+export const CHAT_DRAWER_MS = 300;
 
 export function parseChatOpen(raw: string | null) {
   if (raw === "0" || raw === "false") return false;

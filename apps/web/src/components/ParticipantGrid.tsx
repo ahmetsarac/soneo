@@ -105,14 +105,14 @@ export function ParticipantGrid({
       className="flex h-full min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden"
     >
       <div
-        className={
-          layout
-            ? "flex flex-wrap content-center items-center justify-center"
-            : "grid h-full w-full"
-        }
+        className={layout ? "grid" : "grid h-full w-full"}
         style={
           layout
-            ? { gap: TILE_GAP }
+            ? {
+                gridTemplateColumns: `repeat(${layout.columns}, ${layout.tileWidth}px)`,
+                gridAutoRows: `${layout.tileHeight}px`,
+                gap: TILE_GAP,
+              }
             : {
                 gridTemplateColumns: `repeat(${fallbackColumns}, minmax(0, 1fr))`,
                 gridAutoRows: "minmax(0, 1fr)",
@@ -123,7 +123,7 @@ export function ParticipantGrid({
         {tiles.map((tile) => (
           <div
             key={tile.participant.id}
-            className={layout ? "min-h-0 min-w-0" : "h-full min-h-0 min-w-0"}
+            className="h-full min-h-0 min-w-0"
             style={
               layout
                 ? { width: layout.tileWidth, height: layout.tileHeight }

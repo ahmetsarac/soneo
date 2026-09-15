@@ -19,7 +19,7 @@ import {
 import { clearSession, readSession, writeSession } from "@/lib/session";
 import { clampVolume, readPeerVolumes, writePeerVolumes } from "@/lib/volume";
 import { isPeerConnected } from "@/lib/webrtc";
-import { readChatOpen, writeChatOpen } from "@/lib/chatOpen";
+import { readChatOpen, writeChatOpen, CHAT_DRAWER_MS } from "@/lib/chatOpen";
 
 function GoneScreen({ kind }: { kind: "closed" | "missing" }) {
   return (
@@ -69,6 +69,7 @@ function RoomSession({
   const [showLinking, setShowLinking] = useState(true);
   const [chatOpen, setChatOpen] = useState(true);
   const [chatUnread, setChatUnread] = useState(0);
+  const [showExpandTab, setShowExpandTab] = useState(false);
   const messageCountRef = useRef(0);
   const remotes = room.participants.filter((person) => person.id !== participantId);
   const waitingOnPeers =
@@ -79,6 +80,15 @@ function RoomSession({
     setVolumes(readPeerVolumes());
     setChatOpen(readChatOpen());
   }, []);
+
+  useEffect(() => {
+    if (chatOpen) {
+      setShowExpandTab(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShowExpandTab(true), CHAT_DRAWER_MS);
+    return () => window.clearTimeout(timer);
+  }, [chatOpen]);
 
   useEffect(() => {
     const count = channel.messages.length;
@@ -139,11 +149,7 @@ function RoomSession({
       </header>
 
       <div className="relative min-h-0 flex-1">
-        <div
-          className={`grid h-full min-h-0 ${
-            chatOpen ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""
-          }`}
-        >
+        <div className="grid h-full min-h-0 lg:grid-cols-[minmax(0,1fr)_auto]">
         <section className="flex min-h-[55vh] flex-col gap-4 p-4 md:p-6 lg:min-h-0">
           <div className="flex shrink-0 items-end justify-between">
             <h2 className="font-display text-xl">Ses</h2>
@@ -216,20 +222,42 @@ function RoomSession({
           </div>
         </section>
 
-        {chatOpen && (
-          <ChatPanel
-            messages={channel.messages}
-            selfId={participantId}
-            connected={channel.connected}
-            onSend={channel.sendChat}
-            onClose={() => {
-              setChatOpen(false);
-              writeChatOpen(false);
-            }}
-          />
-        )}
+        <div
+          className={`grid min-h-0 overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+            chatOpen
+              ? "grid-rows-[1fr] lg:grid-cols-[1fr] lg:grid-rows-[minmax(0,1fr)]"
+              : "grid-rows-[0fr] lg:grid-cols-[0fr] lg:grid-rows-[minmax(0,1fr)]"
+          }`}
+          aria-hidden={!chatOpen}
+        >
+          <div
+            className={`min-h-0 min-w-0 overflow-hidden ${
+              chatOpen ? "" : "pointer-events-none"
+            }`}
+            inert={!chatOpen}
+          >
+            <div
+              className={`h-full w-full lg:w-80 transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                chatOpen
+                  ? "translate-x-0 translate-y-0"
+                  : "translate-y-full lg:translate-x-full lg:translate-y-0"
+              }`}
+            >
+              <ChatPanel
+                messages={channel.messages}
+                selfId={participantId}
+                connected={channel.connected}
+                onSend={channel.sendChat}
+                onClose={() => {
+                  setChatOpen(false);
+                  writeChatOpen(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
-        {!chatOpen && (
+        </div>
+        {showExpandTab && (
           <ChatExpandTab
             unread={chatUnread}
             onOpen={() => {
@@ -279,9 +307,11 @@ function LeaveButton({ onLeave }: { onLeave: () => void }) {
         <div
           role="dialog"
           aria-label="Odadan ayrılmayı onayla"
-          className="absolute top-[calc(100%+10px)] right-0 z-50 w-44 rounded-2xl border border-line bg-panel px-3 py-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.45)] before:absolute before:-top-1.5 before:right-5 before:h-3 before:w-3 before:rotate-45 before:border-t before:border-l before:border-line before:bg-panel"
+          className="absolute top-[calc(100%+10px)] right-0 z-50 w-64 rounded-2xl border border-line bg-panel px-3 py-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.45)] before:absolute before:-top-1.5 before:right-5 before:h-3 before:w-3 before:rotate-45 before:border-t before:border-l before:border-line before:bg-panel"
         >
-          <p className="relative text-sm">Odadan ayrıl?</p>
+          <p className="relative text-sm leading-snug">
+            Odadan ayrılmak istediğinize emin misiniz?
+          </p>
           <div className="relative mt-2 flex gap-2">
             <button
               type="button"

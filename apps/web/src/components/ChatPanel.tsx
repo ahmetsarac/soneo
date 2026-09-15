@@ -39,7 +39,7 @@ export function ChatPanel({
   }
 
   return (
-    <aside className="flex h-full min-h-80 flex-col border-t border-line lg:min-h-0 lg:border-t-0 lg:border-l">
+    <aside className="flex h-full min-h-80 w-full flex-col border-t border-line lg:min-h-0 lg:w-80 lg:border-t-0 lg:border-l">
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 className="font-display text-lg">Sohbet</h2>
         <div className="flex items-center gap-2">
