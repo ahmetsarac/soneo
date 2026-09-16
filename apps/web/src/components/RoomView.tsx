@@ -158,8 +158,8 @@ function RoomSession({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
           <p className="font-display text-lg tracking-tight text-acid">Soneo</p>
           <button
@@ -178,9 +178,15 @@ function RoomSession({
         </div>
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        <div className="grid h-full min-h-0 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <section className="flex min-h-[55vh] flex-col gap-4 p-4 md:p-6 lg:min-h-0">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          className={`grid h-full min-h-0 min-w-0 lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[minmax(0,1fr)] ${
+            chatOpen
+              ? "grid-rows-[minmax(0,1fr)_minmax(12rem,38dvh)]"
+              : "grid-rows-[minmax(0,1fr)_0fr]"
+          }`}
+        >
+        <section className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-3 md:gap-4 md:p-6">
           <div className="flex shrink-0 items-end justify-between">
             <h2 className="font-display text-xl">Ses</h2>
             {(media.mediaError || waitingOnPeers) && (
@@ -189,7 +195,7 @@ function RoomSession({
               </p>
             )}
           </div>
-          <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <ParticipantGrid
               focusedKey={focusedTile ? tileKey(focusedTile) : null}
               onSelectTile={(key) => {
@@ -260,7 +266,7 @@ function RoomSession({
               </div>
             )}
           </div>
-          <div className="shrink-0">
+          <div className="min-w-0 shrink-0">
             <MediaBar
               micOn={media.micOn}
               camOn={media.camOn}
@@ -282,10 +288,10 @@ function RoomSession({
         </section>
 
         <div
-          className={`grid min-h-0 overflow-hidden transition-[grid-template-columns,grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+          className={`grid min-h-0 overflow-hidden transition-[grid-template-columns,grid-template-rows,height] duration-300 ease-out motion-reduce:transition-none ${
             chatOpen
-              ? "grid-rows-[1fr] lg:grid-cols-[1fr] lg:grid-rows-[minmax(0,1fr)]"
-              : "grid-rows-[0fr] lg:grid-cols-[0fr] lg:grid-rows-[minmax(0,1fr)]"
+              ? "grid-rows-[1fr] lg:h-full lg:grid-cols-[1fr] lg:grid-rows-[minmax(0,1fr)]"
+              : "grid-rows-[0fr] lg:h-full lg:grid-cols-[0fr] lg:grid-rows-[minmax(0,1fr)]"
           }`}
           aria-hidden={!chatOpen}
         >

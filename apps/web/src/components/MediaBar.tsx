@@ -36,7 +36,8 @@ export function MediaBar({
   onToggleChat: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+    <div className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex w-max min-w-full flex-nowrap items-center justify-center gap-3 [&>*]:shrink-0">
       <VoiceMeter level={micOn ? level : 0} />
       <button
         type="button"
@@ -118,6 +119,7 @@ export function MediaBar({
           </span>
         )}
       </button>
+      </div>
     </div>
   );
 }

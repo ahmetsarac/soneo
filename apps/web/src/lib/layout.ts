@@ -33,7 +33,12 @@ export function meetGridLayout(
   }
 
   const pairWidth = (width - gap) / 2;
-  if (count === 2 && pairWidth >= MIN_PAIR_COLUMN_WIDTH && height >= 120) {
+  if (
+    count === 2 &&
+    width >= height &&
+    pairWidth >= MIN_PAIR_COLUMN_WIDTH &&
+    height >= 120
+  ) {
     const tile = fitSixteenNine(pairWidth, height);
     return { columns: 2, rows: 1, ...tile };
   }

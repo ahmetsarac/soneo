@@ -66,10 +66,10 @@ export function ParticipantGrid({
     return (
       <div
         ref={hostRef}
-        className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3"
+        className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden lg:gap-3"
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-          <div className="min-h-[14rem] min-w-0 flex-1 lg:min-h-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden lg:flex-row lg:gap-3">
+          <div className="min-h-0 min-w-0 flex-1">
             <ParticipantTile
               participant={focused.participant}
               self={focused.self}
@@ -103,46 +103,50 @@ export function ParticipantGrid({
               }
             />
           </div>
-          <div className="flex h-28 shrink-0 gap-2 overflow-x-auto lg:h-full lg:min-h-0 lg:w-52 lg:flex-col lg:overflow-y-auto">
-            {strip.map((tile) => (
-              <div
-                key={tile.id}
-                className="h-full w-44 shrink-0 overflow-hidden lg:h-auto lg:w-full lg:aspect-video"
-              >
-                <ParticipantTile
-                  participant={tile.participant}
-                  self={tile.self}
-                  stream={tile.stream}
-                  level={tile.level}
-                  micOn={tile.micOn}
-                  camOn={tile.camOn}
-                  iceState={tile.iceState}
-                  volume={tile.volume}
-                  presenting={tile.presenting}
-                  compact
-                  playAudio={!tile.self}
-                  onSelect={
-                    tile.presenting ? undefined : () => onSelectTile(tile.id)
-                  }
-                  watchAction={
-                    tile.presenting
-                      ? {
-                          kind: "watch",
-                          label: "İzle",
-                          onClick: () => onSelectTile(tile.id),
-                        }
-                      : undefined
-                  }
-                  onVolumeChange={(value) =>
-                    onVolumeChange(
-                      tile.participant.nickname,
-                      value,
-                      tile.surface,
-                    )
-                  }
-                />
+          <div className="min-h-0 min-w-0 shrink-0 lg:h-full lg:w-52">
+            <div className="-mx-3 min-h-0 min-w-0 overflow-x-auto overscroll-x-contain px-3 touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] lg:mx-0 lg:h-full lg:touch-pan-y lg:overflow-x-hidden lg:overflow-y-auto lg:overscroll-y-contain lg:px-0">
+              <div className="flex h-[6.75rem] w-max min-w-full snap-x gap-2 lg:h-max lg:min-h-full lg:w-full lg:flex-col lg:snap-none">
+                {strip.map((tile) => (
+                  <div
+                    key={tile.id}
+                    className="aspect-video h-full w-[12rem] shrink-0 snap-start overflow-hidden lg:h-auto lg:w-full"
+                  >
+                    <ParticipantTile
+                      participant={tile.participant}
+                      self={tile.self}
+                      stream={tile.stream}
+                      level={tile.level}
+                      micOn={tile.micOn}
+                      camOn={tile.camOn}
+                      iceState={tile.iceState}
+                      volume={tile.volume}
+                      presenting={tile.presenting}
+                      compact
+                      playAudio={!tile.self}
+                      onSelect={
+                        tile.presenting ? undefined : () => onSelectTile(tile.id)
+                      }
+                      watchAction={
+                        tile.presenting
+                          ? {
+                              kind: "watch",
+                              label: "İzle",
+                              onClick: () => onSelectTile(tile.id),
+                            }
+                          : undefined
+                      }
+                      onVolumeChange={(value) =>
+                        onVolumeChange(
+                          tile.participant.nickname,
+                          value,
+                          tile.surface,
+                        )
+                      }
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>

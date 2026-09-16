@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type SyntheticEvent,
+} from "react";
 import type { Participant } from "@/lib/api";
 import { UserContextMenu } from "@/components/UserContextMenu";
 import { VoiceMeter } from "@/components/VoiceMeter";
@@ -156,26 +162,40 @@ export function ParticipantTile({
 
   const showShareBadge = presenting;
   const interactive = Boolean(onSelect);
-  const Tag = interactive ? "button" : "article";
-  const watchOverlay = watchAction?.kind === "watch" && !compact;
-  const watchCompact = watchAction?.kind === "watch" && compact;
+  const enlargeLabel = `${participant.nickname} kamerasını büyüt`;
+  const Tag = interactive && !compact ? "button" : "article";
+  const watchOverlay = watchAction?.kind === "watch";
   const stopWatch = watchAction?.kind === "stop";
 
   return (
     <Tag
-      {...(interactive
+      {...(interactive && !compact
         ? {
             type: "button" as const,
-            "aria-label": `${participant.nickname} kamerasını büyüt`,
+            "aria-label": enlargeLabel,
             onClick: onSelect,
           }
-        : {})}
+        : interactive
+          ? {
+              role: "button" as const,
+              tabIndex: 0,
+              "aria-label": enlargeLabel,
+              onClick: onSelect,
+              onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onSelect?.();
+              },
+            }
+          : {})}
       ref={(node) => {
         tileRef.current = node;
       }}
       className={`relative flex h-full min-h-0 w-full min-w-0 flex-col justify-end overflow-hidden border bg-panel text-left select-none transition ${
-        interactive ? "m-0 min-h-0 hover:border-acid" : "cursor-default"
-      } ${compact ? "rounded-2xl p-2" : "rounded-3xl p-4"} ${
+        interactive
+          ? "m-0 min-h-0 cursor-pointer hover:border-acid"
+          : "cursor-default"
+      } ${compact ? "rounded-2xl p-2 touch-pan-x lg:touch-auto" : "rounded-3xl p-4"} ${
         presenting ? "group screen-share-tile" : ""
       } ${
         speaking
@@ -249,12 +269,14 @@ export function ParticipantTile({
         </div>
       )}
       {watchOverlay && watchAction && (
-        <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center p-3">
+        <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center p-2">
           <button
             type="button"
             onClick={watchAction.onClick}
             onPointerDown={(event) => event.stopPropagation()}
-            className="pointer-events-auto rounded-full bg-acid px-4 py-2 text-sm font-semibold text-ink hover:bg-acid-glow"
+            className={`pointer-events-auto rounded-full bg-acid font-semibold text-ink hover:bg-acid-glow ${
+              compact ? "px-2.5 py-1 text-[11px]" : "px-4 py-2 text-sm"
+            }`}
           >
             {watchAction.label}
           </button>
@@ -310,17 +332,6 @@ export function ParticipantTile({
           )}
         </div>
       </div>
-
-      {watchCompact && watchAction && (
-        <button
-          type="button"
-          onClick={watchAction.onClick}
-          onPointerDown={(event) => event.stopPropagation()}
-          className="relative z-[2] mt-1.5 w-full rounded-full bg-acid px-2 py-1 text-[11px] font-semibold text-ink hover:bg-acid-glow"
-        >
-          {watchAction.label}
-        </button>
-      )}
 
       {stopWatch && watchAction && (
         <button

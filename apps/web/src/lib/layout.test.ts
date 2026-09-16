@@ -45,8 +45,8 @@ describe("meet grid", () => {
     expect(layout.rows).toBe(2);
   });
 
-  it("stacks two people only when the room is too narrow for a pair", () => {
-    const layout = meetGridLayout(2, 320, 700);
+  it("stacks two people in a portrait phone so tiles stay large", () => {
+    const layout = meetGridLayout(2, 390, 640);
     expect(layout.columns).toBe(1);
     expect(layout.rows).toBe(2);
     expect(layout.tileWidth / layout.tileHeight).toBeCloseTo(16 / 9, 5);
