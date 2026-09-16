@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { ParticipantTile } from "@/components/ParticipantTile";
 import type { Participant } from "@/lib/api";
 import { TILE_GAP, meetGridColumns, meetGridLayout } from "@/lib/layout";
+import { orderFilmstrip, type Surface } from "@/lib/presenters";
 
-type TileModel = {
+export type TileModel = {
+  id: string;
   participant: Participant;
   self: boolean;
   stream: MediaStream | null;
-  cameraStream: MediaStream | null;
+  surface: Surface;
   level: number;
   micOn: boolean;
   camOn: boolean;
@@ -20,11 +22,13 @@ type TileModel = {
 
 export function ParticipantGrid({
   tiles,
-  presenterId,
+  focusedKey,
+  onSelectTile,
   onVolumeChange,
 }: {
   tiles: TileModel[];
-  presenterId: string | null;
+  focusedKey: string | null;
+  onSelectTile: (key: string) => void;
   onVolumeChange: (nickname: string, volume: number) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -51,42 +55,59 @@ export function ParticipantGrid({
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
-  }, [presenterId]);
+  }, [focusedKey]);
 
-  const presenter = tiles.find((tile) => tile.participant.id === presenterId);
+  const focused = tiles.find((tile) => tile.id === focusedKey);
+  const strip = orderFilmstrip(tiles.filter((tile) => tile.id !== focusedKey));
 
-  if (presenter) {
+  if (focused) {
     return (
       <div
         ref={hostRef}
-        className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 lg:flex-row"
+        className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3"
       >
-        <div className="min-h-[14rem] min-w-0 flex-1 lg:min-h-0">
-          <ParticipantTile
-            {...presenter}
-            presenting
-            onVolumeChange={(value) =>
-              onVolumeChange(presenter.participant.nickname, value)
-            }
-          />
-        </div>
-        <div className="flex h-28 shrink-0 gap-2 overflow-x-auto lg:h-auto lg:w-52 lg:flex-col lg:overflow-y-auto">
-          {tiles.map((tile) => (
-            <div
-              key={tile.participant.id}
-              className="h-full w-40 shrink-0 lg:h-28 lg:w-full"
-            >
-              <ParticipantTile
-                {...tile}
-                compact
-                presenting={false}
-                stream={tile.cameraStream}
-                onVolumeChange={(value) =>
-                  onVolumeChange(tile.participant.nickname, value)
-                }
-              />
-            </div>
-          ))}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+          <div className="min-h-[14rem] min-w-0 flex-1 lg:min-h-0">
+            <ParticipantTile
+              participant={focused.participant}
+              self={focused.self}
+              stream={focused.stream}
+              level={focused.level}
+              micOn={focused.micOn}
+              camOn={focused.camOn}
+              iceState={focused.iceState}
+              volume={focused.volume}
+              presenting={focused.presenting}
+              onVolumeChange={(value) =>
+                onVolumeChange(focused.participant.nickname, value)
+              }
+            />
+          </div>
+          <div className="flex h-28 shrink-0 gap-2 overflow-x-auto lg:h-full lg:min-h-0 lg:w-52 lg:flex-col lg:overflow-y-auto">
+            {strip.map((tile) => (
+              <div
+                key={tile.id}
+                className="h-full w-44 shrink-0 overflow-hidden lg:h-auto lg:w-full lg:aspect-video"
+              >
+                <ParticipantTile
+                  participant={tile.participant}
+                  self={tile.self}
+                  stream={tile.stream}
+                  level={tile.level}
+                  micOn={tile.micOn}
+                  camOn={tile.camOn}
+                  iceState={tile.iceState}
+                  volume={tile.volume}
+                  presenting={tile.presenting}
+                  compact
+                  onSelect={() => onSelectTile(tile.id)}
+                  onVolumeChange={(value) =>
+                    onVolumeChange(tile.participant.nickname, value)
+                  }
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -122,7 +143,7 @@ export function ParticipantGrid({
       >
         {tiles.map((tile) => (
           <div
-            key={tile.participant.id}
+            key={tile.id}
             className="h-full min-h-0 min-w-0"
             style={
               layout
@@ -131,7 +152,15 @@ export function ParticipantGrid({
             }
           >
             <ParticipantTile
-              {...tile}
+              participant={tile.participant}
+              self={tile.self}
+              stream={tile.stream}
+              level={tile.level}
+              micOn={tile.micOn}
+              camOn={tile.camOn}
+              iceState={tile.iceState}
+              volume={tile.volume}
+              presenting={tile.presenting}
               onVolumeChange={(value) =>
                 onVolumeChange(tile.participant.nickname, value)
               }

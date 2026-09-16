@@ -20,6 +20,14 @@ import { clearSession, readSession, writeSession } from "@/lib/session";
 import { clampVolume, readPeerVolumes, writePeerVolumes } from "@/lib/volume";
 import { isPeerConnected } from "@/lib/webrtc";
 import { readChatOpen, writeChatOpen, CHAT_DRAWER_MS } from "@/lib/chatOpen";
+import {
+  newestShareId,
+  parseTileKey,
+  resolveFocusedTile,
+  sharingParticipantIds,
+  tileKey,
+  type FocusedTile,
+} from "@/lib/presenters";
 
 function GoneScreen({ kind }: { kind: "closed" | "missing" }) {
   return (
@@ -70,8 +78,17 @@ function RoomSession({
   const [chatOpen, setChatOpen] = useState(true);
   const [chatUnread, setChatUnread] = useState(0);
   const [showExpandTab, setShowExpandTab] = useState(false);
+  const [focusedTile, setFocusedTile] = useState<FocusedTile | null>(null);
   const messageCountRef = useRef(0);
+  const sharingIdsRef = useRef<string[]>([]);
   const remotes = room.participants.filter((person) => person.id !== participantId);
+  const sharingIds = sharingParticipantIds(
+    room.participants,
+    participantId,
+    media.screenOn,
+  );
+  const sharingKey = sharingIds.join(",");
+  const participantKey = room.participants.map((person) => person.id).join(",");
   const waitingOnPeers =
     remotes.length > 0 &&
     remotes.every((person) => !isPeerConnected(media.iceStates[person.id]));
@@ -101,6 +118,16 @@ function RoomSession({
     messageCountRef.current = count;
     if (added > 0) setChatUnread((current) => current + added);
   }, [channel.messages, chatOpen]);
+
+  useEffect(() => {
+    const nextSharing = sharingKey ? sharingKey.split(",") : [];
+    const newest = newestShareId(sharingIdsRef.current, nextSharing);
+    sharingIdsRef.current = nextSharing;
+    const participantIds = participantKey ? participantKey.split(",") : [];
+    setFocusedTile((current) =>
+      resolveFocusedTile(participantIds, nextSharing, current, newest),
+    );
+  }, [participantKey, sharingKey]);
 
   useEffect(() => {
     if (!waitingOnPeers) {
@@ -161,33 +188,54 @@ function RoomSession({
           </div>
           <div className="relative flex min-h-0 flex-1 flex-col">
             <ParticipantGrid
-              presenterId={
-                media.screenOn
-                  ? participantId
-                  : (room.participants.find((person) => person.screenOn)?.id ?? null)
-              }
+              focusedKey={focusedTile ? tileKey(focusedTile) : null}
+              onSelectTile={(key) => {
+                const next = parseTileKey(key);
+                if (next) setFocusedTile(next);
+              }}
               onVolumeChange={setPeerVolume}
-              tiles={room.participants.map((participant) => {
+              tiles={room.participants.flatMap((participant) => {
                 const self = participant.id === participantId;
-                const presenting = self ? media.screenOn : participant.screenOn;
+                const sharing = self ? media.screenOn : participant.screenOn;
                 const cameraStream = self
                   ? media.localStream
                   : (media.remoteStreams[participant.id] ?? null);
                 const screenStream = self
                   ? media.localScreen
                   : (media.remoteScreens[participant.id] ?? null);
-                return {
+                const base = {
                   participant,
                   self,
-                  stream: presenting ? screenStream : cameraStream,
-                  cameraStream,
                   level: media.levels[participant.id] ?? 0,
                   micOn: self ? media.micOn : participant.micOn,
                   camOn: self ? media.camOn : participant.camOn,
                   iceState: self ? undefined : media.iceStates[participant.id],
                   volume: self ? 0 : (volumes[participant.nickname] ?? 1),
-                  presenting,
                 };
+                const camera = {
+                  ...base,
+                  id: tileKey({
+                    participantId: participant.id,
+                    surface: "camera",
+                  }),
+                  stream: cameraStream,
+                  surface: "camera" as const,
+                  presenting: false,
+                };
+                if (!sharing) return [camera];
+                return [
+                  camera,
+                  {
+                    ...base,
+                    id: tileKey({
+                      participantId: participant.id,
+                      surface: "screen",
+                    }),
+                    stream: screenStream,
+                    surface: "screen" as const,
+                    presenting: true,
+                  },
+                ];
               })}
             />
             {waitingOnPeers && showLinking && (

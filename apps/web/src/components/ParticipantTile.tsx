@@ -31,6 +31,7 @@ export function ParticipantTile({
   onVolumeChange,
   presenting = false,
   compact = false,
+  onSelect,
 }: {
   participant: Participant;
   self: boolean;
@@ -43,6 +44,7 @@ export function ParticipantTile({
   onVolumeChange: (volume: number) => void;
   presenting?: boolean;
   compact?: boolean;
+  onSelect?: () => void;
 }) {
   const tileRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -144,13 +146,33 @@ export function ParticipantTile({
     void toggleFullscreen(tile, videoRef.current);
   }
 
+  const interactive = Boolean(onSelect);
+  const Tag = interactive ? "button" : "article";
+  const showShareBadge = presenting;
+  const selectLabel = presenting
+    ? `${participant.nickname} ekranını göster`
+    : `${participant.nickname} kamerasını göster`;
+
   return (
-    <article
-      ref={tileRef}
-      className={`relative flex h-full min-h-0 cursor-default flex-col justify-end overflow-hidden rounded-3xl border bg-panel select-none transition ${
-        compact ? "p-2" : "p-4"
-      } ${presenting ? "group screen-share-tile" : ""} ${
-        speaking ? "border-acid shadow-[0_0_0_1px_rgba(214,255,63,0.35)]" : "border-line"
+    <Tag
+      {...(interactive
+        ? {
+            type: "button" as const,
+            "aria-label": selectLabel,
+            onClick: onSelect,
+          }
+        : {})}
+      ref={(node) => {
+        tileRef.current = node;
+      }}
+      className={`relative flex h-full min-h-0 w-full min-w-0 flex-col justify-end overflow-hidden border bg-panel text-left select-none transition ${
+        interactive ? "m-0 min-h-0" : "cursor-default"
+      } ${compact ? "rounded-2xl p-2" : "rounded-3xl p-4"} ${
+        presenting ? "group screen-share-tile" : ""
+      } ${
+        speaking
+          ? "border-acid shadow-[0_0_0_1px_rgba(214,255,63,0.35)]"
+          : "border-line"
       }`}
       onContextMenu={(event) => {
         if (self) return;
@@ -176,7 +198,7 @@ export function ParticipantTile({
         if (dx * dx + dy * dy > 144) clearPress();
       }}
       onDoubleClick={() => {
-        if (!presenting || !showVideo) return;
+        if (compact || !presenting || !showVideo) return;
         const tile = tileRef.current;
         if (!tile) return;
         void toggleFullscreen(tile, videoRef.current);
@@ -194,7 +216,7 @@ export function ParticipantTile({
         }`}
       />
       {!self && <audio ref={audioRef} autoPlay />}
-      {presenting && showVideo && (
+      {presenting && showVideo && !compact && (
         <button
           type="button"
           className={`absolute top-3 right-3 z-[2] flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-paper transition hover:bg-black/75 hover:text-acid ${
@@ -239,17 +261,17 @@ export function ParticipantTile({
         </>
       )}
 
-      <div className="relative flex items-end justify-between gap-2">
-        <p className="truncate text-sm font-medium drop-shadow">
+      <div className="relative flex min-w-0 items-end justify-between gap-2">
+        <p className="min-w-0 truncate text-sm font-medium drop-shadow">
           {participant.nickname}
           {self && <span className="text-mist"> (sen)</span>}
-          {presenting && (
-            <span className="ml-2 rounded-full bg-acid px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
+        </p>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {showShareBadge && (
+            <span className="rounded-full bg-acid px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
               ekran
             </span>
           )}
-        </p>
-        <div className="flex shrink-0 items-center gap-1.5">
           {speaking && <VoiceMeter level={level} />}
           {localMuted && (
             <span className="rounded-full bg-black/45 px-2 py-0.5 text-[11px] tracking-wide text-ember uppercase">
@@ -279,7 +301,7 @@ export function ParticipantTile({
           onClose={() => setMenu(null)}
         />
       )}
-    </article>
+    </Tag>
   );
 }
 
