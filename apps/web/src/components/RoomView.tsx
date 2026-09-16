@@ -27,6 +27,7 @@ import {
   tileKey,
   type FocusedTile,
 } from "@/lib/presenters";
+import { playPresenceCue, presenceCueFromMessage } from "@/lib/presenceCue";
 
 function GoneScreen({ kind }: { kind: "closed" | "missing" }) {
   return (
@@ -95,6 +96,14 @@ function RoomSession({
     setVolumes(readPeerVolumes());
     setChatOpen(readChatOpen());
   }, []);
+
+  useEffect(() => {
+    return channel.subscribe((event) => {
+      if (event.type !== "chat") return;
+      const cue = presenceCueFromMessage(event.message);
+      if (cue) void playPresenceCue(cue);
+    });
+  }, [channel.subscribe]);
 
   useEffect(() => {
     if (chatOpen) {
