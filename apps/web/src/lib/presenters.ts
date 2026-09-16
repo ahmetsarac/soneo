@@ -55,18 +55,10 @@ export function resolveFocusedTile(
   participantIds: string[],
   sharingIds: string[],
   focused: FocusedTile | null,
-  newestId: string | null,
 ): FocusedTile | null {
-  if (sharingIds.length === 0) return null;
-  if (focused && isFocusedTileValid(focused, participantIds, sharingIds)) {
-    return focused;
-  }
-  const screenId =
-    (newestId && sharingIds.includes(newestId) ? newestId : null) ??
-    sharingIds[sharingIds.length - 1] ??
-    null;
-  if (!screenId) return null;
-  return { participantId: screenId, surface: "screen" };
+  if (!focused) return null;
+  if (!isFocusedTileValid(focused, participantIds, sharingIds)) return null;
+  return focused;
 }
 
 export function orderFilmstrip<T extends { surface: Surface }>(tiles: T[]) {

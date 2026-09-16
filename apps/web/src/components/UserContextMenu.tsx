@@ -7,6 +7,7 @@ import { clampMenuPosition } from "@/lib/menu";
 export function UserContextMenu({
   nickname,
   volume,
+  audioLabel = "Kullanıcı sesi",
   x,
   y,
   onVolumeChange,
@@ -14,6 +15,7 @@ export function UserContextMenu({
 }: {
   nickname: string;
   volume: number;
+  audioLabel?: string;
   x: number;
   y: number;
   onVolumeChange: (volume: number) => void;
@@ -69,10 +71,10 @@ export function UserContextMenu({
       <p className="truncate px-2.5 py-2 text-sm font-medium">{nickname}</p>
       <div className="mx-1 h-px bg-line" />
       <p className="px-2.5 pt-2 text-[10px] tracking-[0.16em] text-mist uppercase">
-        Kullanıcı sesi
+        {audioLabel}
       </p>
       <label className="flex items-center gap-2 px-2.5 py-2">
-        <span className="sr-only">{nickname} ses seviyesi</span>
+        <span className="sr-only">{nickname} {audioLabel.toLocaleLowerCase("tr")}</span>
         <input
           type="range"
           min={0}

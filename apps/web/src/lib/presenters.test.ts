@@ -53,53 +53,42 @@ describe("resolveFocusedTile", () => {
 
   it("keeps the current share while it is still live", () => {
     expect(
-      resolveFocusedTile(
-        people,
-        ["a", "c"],
-        { participantId: "a", surface: "screen" },
-        "c",
-      ),
+      resolveFocusedTile(people, ["a", "c"], {
+        participantId: "a",
+        surface: "screen",
+      }),
     ).toEqual({ participantId: "a", surface: "screen" });
   });
 
   it("keeps a camera focus while someone is sharing", () => {
     expect(
-      resolveFocusedTile(
-        people,
-        ["c"],
-        { participantId: "a", surface: "camera" },
-        "c",
-      ),
+      resolveFocusedTile(people, ["c"], {
+        participantId: "a",
+        surface: "camera",
+      }),
     ).toEqual({ participantId: "a", surface: "camera" });
   });
 
-  it("follows a new share when nothing is focused yet", () => {
-    expect(resolveFocusedTile(people, ["c"], null, "c")).toEqual({
-      participantId: "c",
-      surface: "screen",
-    });
+  it("does not auto-watch a new share", () => {
+    expect(resolveFocusedTile(people, ["c"], null)).toBe(null);
   });
 
-  it("falls back to another live share when the focused screen stops", () => {
+  it("returns to the grid when the watched screen stops", () => {
     expect(
-      resolveFocusedTile(
-        people,
-        ["c"],
-        { participantId: "a", surface: "screen" },
-        null,
-      ),
-    ).toEqual({ participantId: "c", surface: "screen" });
-  });
-
-  it("clears focus when nobody is sharing", () => {
-    expect(
-      resolveFocusedTile(
-        people,
-        [],
-        { participantId: "a", surface: "camera" },
-        null,
-      ),
+      resolveFocusedTile(people, ["c"], {
+        participantId: "a",
+        surface: "screen",
+      }),
     ).toBe(null);
+  });
+
+  it("keeps a camera focus after shares end", () => {
+    expect(
+      resolveFocusedTile(people, [], {
+        participantId: "a",
+        surface: "camera",
+      }),
+    ).toEqual({ participantId: "a", surface: "camera" });
   });
 });
 

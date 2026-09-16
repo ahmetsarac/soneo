@@ -5,6 +5,7 @@ import type { Participant } from "@/lib/api";
 import type { ServerEvent } from "@/lib/realtime";
 import {
   ICE_SERVERS,
+  assignInboundAudio,
   assignInboundVideo,
   canApplyRemoteDescription,
   decideIceCandidate,
@@ -39,8 +40,10 @@ type PeerSlot = {
   audioSender: RTCRtpSender;
   videoSender: RTCRtpSender;
   screenSender: RTCRtpSender;
+  screenAudioSender: RTCRtpSender;
   cameraTransceiver: RTCRtpTransceiver;
   screenTransceiver: RTCRtpTransceiver;
+  screenAudioTransceiver: RTCRtpTransceiver;
 };
 
 type Meter = {
@@ -98,6 +101,39 @@ async function readMic() {
     });
   } catch {
     return null;
+  }
+}
+
+async function readDisplay() {
+  const withAudio = {
+    video: true,
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
+    systemAudio: "include" as const,
+  };
+  try {
+    return await navigator.mediaDevices.getDisplayMedia(withAudio);
+  } catch (err) {
+    const name = err instanceof DOMException ? err.name : "";
+    if (name === "AbortError" || name === "NotAllowedError") throw err;
+    return navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false,
+    });
+  }
+}
+
+function attachTrack(stream: MediaStream, track: MediaStreamTrack) {
+  for (const existing of [...stream.getTracks()]) {
+    if (existing.kind === track.kind && existing.id !== track.id) {
+      stream.removeTrack(existing);
+    }
+  }
+  if (!stream.getTracks().some((item) => item.id === track.id)) {
+    stream.addTrack(track);
   }
 }
 
@@ -278,6 +314,12 @@ export function useWebRTC({
     return null;
   }, []);
 
+  const outgoingScreenAudioTrack = useCallback(() => {
+    const audio = screenStreamRef.current?.getAudioTracks()[0];
+    if (screenOnRef.current && audio && audio.readyState === "live") return audio;
+    return null;
+  }, []);
+
   const outgoingAudioTrack = useCallback(() => {
     const original = localRef.current?.getAudioTracks()[0] ?? null;
     const processed = noiseFilterRef.current?.track ?? null;
@@ -290,12 +332,19 @@ export function useWebRTC({
     const audio = outgoingAudioTrack();
     const camera = outgoingCameraTrack();
     const screen = outgoingScreenTrack();
+    const screenAudio = outgoingScreenAudioTrack();
     for (const slot of peersRef.current.values()) {
       void slot.audioSender.replaceTrack(audio);
       void slot.videoSender.replaceTrack(camera);
       void slot.screenSender.replaceTrack(screen);
+      void slot.screenAudioSender.replaceTrack(screenAudio);
     }
-  }, [outgoingAudioTrack, outgoingCameraTrack, outgoingScreenTrack]);
+  }, [
+    outgoingAudioTrack,
+    outgoingCameraTrack,
+    outgoingScreenAudioTrack,
+    outgoingScreenTrack,
+  ]);
   applyOutgoingTracksRef.current = applyOutgoingTracks;
 
   const publishLocalStream = useCallback((stream: MediaStream) => {
@@ -399,6 +448,7 @@ export function useWebRTC({
       const audio = pc.addTransceiver("audio", { direction: "sendrecv" });
       const camera = pc.addTransceiver("video", { direction: "sendrecv" });
       const screen = pc.addTransceiver("video", { direction: "sendrecv" });
+      const screenAudio = pc.addTransceiver("audio", { direction: "sendrecv" });
       const slot: PeerSlot = {
         pc,
         makingOffer: false,
@@ -414,8 +464,10 @@ export function useWebRTC({
         audioSender: audio.sender,
         videoSender: camera.sender,
         screenSender: screen.sender,
+        screenAudioSender: screenAudio.sender,
         cameraTransceiver: camera,
         screenTransceiver: screen,
+        screenAudioTransceiver: screenAudio,
       };
       peersRef.current.set(remoteId, slot);
       setIceStates((current) => ({ ...current, [remoteId]: pc.iceConnectionState }));
@@ -423,6 +475,7 @@ export function useWebRTC({
       void slot.audioSender.replaceTrack(outgoingAudioTrack());
       void slot.videoSender.replaceTrack(outgoingCameraTrack());
       void slot.screenSender.replaceTrack(outgoingScreenTrack());
+      void slot.screenAudioSender.replaceTrack(outgoingScreenAudioTrack());
 
       const sendPayload = (data: unknown) => {
         sendSignalRef.current(remoteId, data);
@@ -485,9 +538,41 @@ export function useWebRTC({
           const role = assignInboundVideo(known, hasCameraVideo);
 
           if (role === "screen") {
-            const published = new MediaStream([track]);
+            const current = screensRef.current.get(remoteId) ?? new MediaStream();
+            attachTrack(current, track);
+            const published = new MediaStream(current.getTracks());
             publishScreen(remoteId, published);
-            const refresh = () => publishScreen(remoteId, new MediaStream([track]));
+            const refresh = () => {
+              const latest = screensRef.current.get(remoteId);
+              if (!latest) return;
+              publishScreen(remoteId, new MediaStream(latest.getTracks()));
+            };
+            track.addEventListener("unmute", refresh);
+            track.addEventListener("mute", refresh);
+            return;
+          }
+        }
+
+        if (track.kind === "audio") {
+          const known =
+            transceiver === slot.screenAudioTransceiver
+              ? "screen"
+              : transceiver === audio
+                ? "mic"
+                : "unknown";
+          const hasMic =
+            (remotesRef.current.get(remoteId)?.getAudioTracks().length ?? 0) > 0;
+          const audioRole = assignInboundAudio(known, hasMic);
+          if (audioRole === "screen") {
+            const current = screensRef.current.get(remoteId) ?? new MediaStream();
+            attachTrack(current, track);
+            const published = new MediaStream(current.getTracks());
+            publishScreen(remoteId, published);
+            const refresh = () => {
+              const latest = screensRef.current.get(remoteId);
+              if (!latest) return;
+              publishScreen(remoteId, new MediaStream(latest.getTracks()));
+            };
             track.addEventListener("unmute", refresh);
             track.addEventListener("mute", refresh);
             return;
@@ -545,7 +630,7 @@ export function useWebRTC({
 
       return slot;
     },
-    [outgoingAudioTrack, outgoingCameraTrack, outgoingScreenTrack, publishRemote, publishScreen, watchStream],
+    [outgoingAudioTrack, outgoingCameraTrack, outgoingScreenAudioTrack, outgoingScreenTrack, publishRemote, publishScreen, watchStream],
   );
 
   const handleSignal = useCallback(
@@ -783,10 +868,7 @@ export function useWebRTC({
       return;
     }
     try {
-      const display = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
+      const display = await readDisplay();
       const track = display.getVideoTracks()[0];
       if (!track) {
         display.getTracks().forEach((item) => item.stop());
@@ -795,6 +877,9 @@ export function useWebRTC({
       track.contentHint = "detail";
       track.enabled = true;
       track.onended = () => stopScreenShare();
+      for (const audio of display.getAudioTracks()) {
+        audio.onended = () => applyOutgoingTracks();
+      }
       screenStreamRef.current = display;
       setLocalScreen(display);
       screenOnRef.current = true;

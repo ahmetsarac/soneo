@@ -26,6 +26,15 @@ export function inboundVideoRole(existingVideoTracks: number) {
   return existingVideoTracks > 0 ? "screen" : "camera";
 }
 
+export function assignInboundAudio(
+  transceiver: "mic" | "screen" | "unknown",
+  micAlreadyHasAudio: boolean,
+): "mic" | "screen" {
+  if (transceiver === "screen") return "screen";
+  if (transceiver === "mic") return "mic";
+  return micAlreadyHasAudio ? "screen" : "mic";
+}
+
 export function assignInboundVideo(
   transceiver: "camera" | "screen" | "unknown",
   cameraAlreadyHasVideo: boolean,

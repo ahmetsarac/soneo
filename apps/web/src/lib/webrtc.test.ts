@@ -6,6 +6,7 @@ import {
   decideIceCandidate,
   inboundVideoRole,
   assignInboundVideo,
+  assignInboundAudio,
   offerCollisionAction,
   canApplyRemoteDescription,
   isSdpOrderError,
@@ -88,6 +89,13 @@ describe("webrtc helpers", () => {
     expect(assignInboundVideo("screen", false)).toBe("screen");
     expect(assignInboundVideo("unknown", false)).toBe("camera");
     expect(assignInboundVideo("unknown", true)).toBe("screen");
+  });
+
+  it("keeps the first unknown audio as mic and the next as screen audio", () => {
+    expect(assignInboundAudio("mic", false)).toBe("mic");
+    expect(assignInboundAudio("screen", false)).toBe("screen");
+    expect(assignInboundAudio("unknown", false)).toBe("mic");
+    expect(assignInboundAudio("unknown", true)).toBe("screen");
   });
 
   it("rolls back polite offers during glare and ignores impolite ones", () => {

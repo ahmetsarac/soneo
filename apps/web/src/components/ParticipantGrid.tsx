@@ -24,12 +24,14 @@ export function ParticipantGrid({
   tiles,
   focusedKey,
   onSelectTile,
+  onStopWatch,
   onVolumeChange,
 }: {
   tiles: TileModel[];
   focusedKey: string | null;
   onSelectTile: (key: string) => void;
-  onVolumeChange: (nickname: string, volume: number) => void;
+  onStopWatch: () => void;
+  onVolumeChange: (nickname: string, volume: number, surface: Surface) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -78,8 +80,26 @@ export function ParticipantGrid({
               iceState={focused.iceState}
               volume={focused.volume}
               presenting={focused.presenting}
+              playAudio={!focused.self}
+              watchAction={
+                focused.presenting
+                  ? {
+                      kind: "stop",
+                      label: "Yayını izlemeyi durdur",
+                      onClick: onStopWatch,
+                    }
+                  : {
+                      kind: "stop",
+                      label: "Küçült",
+                      onClick: onStopWatch,
+                    }
+              }
               onVolumeChange={(value) =>
-                onVolumeChange(focused.participant.nickname, value)
+                onVolumeChange(
+                  focused.participant.nickname,
+                  value,
+                  focused.surface,
+                )
               }
             />
           </div>
@@ -100,9 +120,25 @@ export function ParticipantGrid({
                   volume={tile.volume}
                   presenting={tile.presenting}
                   compact
-                  onSelect={() => onSelectTile(tile.id)}
+                  playAudio={!tile.self}
+                  onSelect={
+                    tile.presenting ? undefined : () => onSelectTile(tile.id)
+                  }
+                  watchAction={
+                    tile.presenting
+                      ? {
+                          kind: "watch",
+                          label: "İzle",
+                          onClick: () => onSelectTile(tile.id),
+                        }
+                      : undefined
+                  }
                   onVolumeChange={(value) =>
-                    onVolumeChange(tile.participant.nickname, value)
+                    onVolumeChange(
+                      tile.participant.nickname,
+                      value,
+                      tile.surface,
+                    )
                   }
                 />
               </div>
@@ -161,8 +197,21 @@ export function ParticipantGrid({
               iceState={tile.iceState}
               volume={tile.volume}
               presenting={tile.presenting}
+              playAudio={!tile.self}
+              onSelect={
+                tile.presenting ? undefined : () => onSelectTile(tile.id)
+              }
+              watchAction={
+                tile.presenting
+                  ? {
+                      kind: "watch",
+                      label: "Yayını izle",
+                      onClick: () => onSelectTile(tile.id),
+                    }
+                  : undefined
+              }
               onVolumeChange={(value) =>
-                onVolumeChange(tile.participant.nickname, value)
+                onVolumeChange(tile.participant.nickname, value, tile.surface)
               }
             />
           </div>

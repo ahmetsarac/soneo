@@ -1,5 +1,12 @@
 const STORAGE_KEY = "soneo.peerVolumes";
 
+export function volumeStorageKey(
+  nickname: string,
+  surface: "camera" | "screen" = "camera",
+) {
+  return surface === "screen" ? `${nickname}::screen` : nickname;
+}
+
 export function clampVolume(value: number) {
   if (!Number.isFinite(value)) return 1;
   return Math.min(1, Math.max(0, value));

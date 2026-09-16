@@ -17,11 +17,10 @@ import {
   type Room,
 } from "@/lib/api";
 import { clearSession, readSession, writeSession } from "@/lib/session";
-import { clampVolume, readPeerVolumes, writePeerVolumes } from "@/lib/volume";
+import { clampVolume, readPeerVolumes, writePeerVolumes, volumeStorageKey } from "@/lib/volume";
 import { isPeerConnected } from "@/lib/webrtc";
 import { readChatOpen, writeChatOpen, CHAT_DRAWER_MS } from "@/lib/chatOpen";
 import {
-  newestShareId,
   parseTileKey,
   resolveFocusedTile,
   sharingParticipantIds,
@@ -80,7 +79,6 @@ function RoomSession({
   const [showExpandTab, setShowExpandTab] = useState(false);
   const [focusedTile, setFocusedTile] = useState<FocusedTile | null>(null);
   const messageCountRef = useRef(0);
-  const sharingIdsRef = useRef<string[]>([]);
   const remotes = room.participants.filter((person) => person.id !== participantId);
   const sharingIds = sharingParticipantIds(
     room.participants,
@@ -121,11 +119,9 @@ function RoomSession({
 
   useEffect(() => {
     const nextSharing = sharingKey ? sharingKey.split(",") : [];
-    const newest = newestShareId(sharingIdsRef.current, nextSharing);
-    sharingIdsRef.current = nextSharing;
     const participantIds = participantKey ? participantKey.split(",") : [];
     setFocusedTile((current) =>
-      resolveFocusedTile(participantIds, nextSharing, current, newest),
+      resolveFocusedTile(participantIds, nextSharing, current),
     );
   }, [participantKey, sharingKey]);
 
@@ -139,9 +135,16 @@ function RoomSession({
     return () => window.clearTimeout(timer);
   }, [waitingOnPeers]);
 
-  function setPeerVolume(nickname: string, value: number) {
+  function setPeerVolume(
+    nickname: string,
+    value: number,
+    surface: "camera" | "screen" = "camera",
+  ) {
     setVolumes((current) => {
-      const next = { ...current, [nickname]: clampVolume(value) };
+      const next = {
+        ...current,
+        [volumeStorageKey(nickname, surface)]: clampVolume(value),
+      };
       writePeerVolumes(next);
       return next;
     });
@@ -193,6 +196,7 @@ function RoomSession({
                 const next = parseTileKey(key);
                 if (next) setFocusedTile(next);
               }}
+              onStopWatch={() => setFocusedTile(null)}
               onVolumeChange={setPeerVolume}
               tiles={room.participants.flatMap((participant) => {
                 const self = participant.id === participantId;
@@ -210,7 +214,6 @@ function RoomSession({
                   micOn: self ? media.micOn : participant.micOn,
                   camOn: self ? media.camOn : participant.camOn,
                   iceState: self ? undefined : media.iceStates[participant.id],
-                  volume: self ? 0 : (volumes[participant.nickname] ?? 1),
                 };
                 const camera = {
                   ...base,
@@ -221,6 +224,10 @@ function RoomSession({
                   stream: cameraStream,
                   surface: "camera" as const,
                   presenting: false,
+                  volume: self
+                    ? 0
+                    : (volumes[volumeStorageKey(participant.nickname, "camera")] ??
+                      1),
                 };
                 if (!sharing) return [camera];
                 return [
@@ -234,6 +241,10 @@ function RoomSession({
                     stream: screenStream,
                     surface: "screen" as const,
                     presenting: true,
+                    volume: self
+                      ? 0
+                      : (volumes[volumeStorageKey(participant.nickname, "screen")] ??
+                        1),
                   },
                 ];
               })}

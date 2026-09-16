@@ -31,7 +31,9 @@ export function ParticipantTile({
   onVolumeChange,
   presenting = false,
   compact = false,
+  playAudio = true,
   onSelect,
+  watchAction,
 }: {
   participant: Participant;
   self: boolean;
@@ -44,7 +46,13 @@ export function ParticipantTile({
   onVolumeChange: (volume: number) => void;
   presenting?: boolean;
   compact?: boolean;
+  playAudio?: boolean;
   onSelect?: () => void;
+  watchAction?: {
+    kind: "watch" | "stop";
+    label: string;
+    onClick: () => void;
+  };
 }) {
   const tileRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -146,19 +154,19 @@ export function ParticipantTile({
     void toggleFullscreen(tile, videoRef.current);
   }
 
+  const showShareBadge = presenting;
   const interactive = Boolean(onSelect);
   const Tag = interactive ? "button" : "article";
-  const showShareBadge = presenting;
-  const selectLabel = presenting
-    ? `${participant.nickname} ekranını göster`
-    : `${participant.nickname} kamerasını göster`;
+  const watchOverlay = watchAction?.kind === "watch" && !compact;
+  const watchCompact = watchAction?.kind === "watch" && compact;
+  const stopWatch = watchAction?.kind === "stop";
 
   return (
     <Tag
       {...(interactive
         ? {
             type: "button" as const,
-            "aria-label": selectLabel,
+            "aria-label": `${participant.nickname} kamerasını büyüt`,
             onClick: onSelect,
           }
         : {})}
@@ -166,7 +174,7 @@ export function ParticipantTile({
         tileRef.current = node;
       }}
       className={`relative flex h-full min-h-0 w-full min-w-0 flex-col justify-end overflow-hidden border bg-panel text-left select-none transition ${
-        interactive ? "m-0 min-h-0" : "cursor-default"
+        interactive ? "m-0 min-h-0 hover:border-acid" : "cursor-default"
       } ${compact ? "rounded-2xl p-2" : "rounded-3xl p-4"} ${
         presenting ? "group screen-share-tile" : ""
       } ${
@@ -215,7 +223,7 @@ export function ParticipantTile({
           showVideo ? "opacity-100" : "opacity-0"
         }`}
       />
-      {!self && <audio ref={audioRef} autoPlay />}
+      {!self && playAudio && <audio ref={audioRef} autoPlay />}
       {presenting && showVideo && !compact && (
         <button
           type="button"
@@ -238,6 +246,18 @@ export function ParticipantTile({
         <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-panel/80">
           <span className="h-7 w-7 animate-spin rounded-full border-2 border-line border-t-acid" />
           {!compact && <p className="text-xs text-mist">Bağlanıyor…</p>}
+        </div>
+      )}
+      {watchOverlay && watchAction && (
+        <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center p-3">
+          <button
+            type="button"
+            onClick={watchAction.onClick}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="pointer-events-auto rounded-full bg-acid px-4 py-2 text-sm font-semibold text-ink hover:bg-acid-glow"
+          >
+            {watchAction.label}
+          </button>
         </div>
       )}
       {!showVideo && (
@@ -291,10 +311,33 @@ export function ParticipantTile({
         </div>
       </div>
 
+      {watchCompact && watchAction && (
+        <button
+          type="button"
+          onClick={watchAction.onClick}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="relative z-[2] mt-1.5 w-full rounded-full bg-acid px-2 py-1 text-[11px] font-semibold text-ink hover:bg-acid-glow"
+        >
+          {watchAction.label}
+        </button>
+      )}
+
+      {stopWatch && watchAction && (
+        <button
+          type="button"
+          onClick={watchAction.onClick}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="relative z-[2] mt-2 w-fit self-center rounded-full border border-acid bg-black/55 px-3 py-1.5 text-sm hover:bg-acid hover:text-ink"
+        >
+          {watchAction.label}
+        </button>
+      )}
+
       {menu && (
         <UserContextMenu
           nickname={participant.nickname}
           volume={volume}
+          audioLabel={presenting ? "Yayın sesi" : "Kullanıcı sesi"}
           x={menu.x}
           y={menu.y}
           onVolumeChange={onVolumeChange}
